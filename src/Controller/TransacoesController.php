@@ -2,13 +2,17 @@
 
 namespace App\Controller;
 
+use App\Dto\ContaDto;
+use App\Dto\TransacaoExtratoDto;
 use App\Dto\TransacaoRealizarDto;
 use App\Dto\UsuarioDto;
 use App\Entity\Transacao;
 use App\Repository\ContaRepository;
+use App\Repository\TransacaoRepository;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
@@ -105,6 +109,65 @@ final class TransacoesController extends AbstractController
         $entityManager->flush();
 
         return new Response(status: 204);
+    }
+    // /api/transacoes/:{idUsuario}/extrato
+    #[Route('/transacoes/{idUsuario}/extrato', name: 'transacoes_extrato', methods:['GET'])]
+    public function gerarExtrato(
+        int $idUsuario,
+        ContaRepository $contaRepository,
+        TransacaoRepository $transacaoRepository
 
+    ): JsonResponse {
+        $conta = $contaRepository->findByUsuarioId($idUsuario);
+        if (!$conta) {
+            return $this->json([
+                'message' => 'Usuário não encontrado!'
+            ], 404);
+        }
+
+        $transacoes = $transacaoRepository->findByContaOrigemOrContaDestino($conta->getId());
+
+        $saida = [];
+
+        foreach ($transacoes as $transacao) {
+            $transacaoDto = new TransacaoExtratoDto();
+            
+            // getter e setter
+
+            $transacaoDto->setId($transacao->getId());
+            $transacaoDto->setValor($transacao->getValor());
+            $transacaoDto->setDataHora($transacao->getDataHora());
+
+            if ($conta ->getUsuario() ->getId() === $transacao->getContaOrigem() ->getId()) {
+                $transacaoDto->setTipo('Enviou');
+            } else if ($conta ->getId() === $transacao->getContaDestino() ->getId()) {
+                $transacaoDto->setTipo('Recebeu');            
+            }
+
+            // Origem
+            $origem = $transacao->getContaOrigem();
+            $contaOrigemDto = new ContaDto();
+            $contaOrigemDto->setId($origem->getUsuario()->getId());
+            $contaOrigemDto->setNome($origem->getUsuario()->getNome());
+            $contaOrigemDto->setCpf($origem->getUsuario()->getCpf());
+            $contaOrigemDto->setNumeroConta($origem->getNumero());
+
+            $transacaoDto->setOrigem($contaOrigemDto);
+
+            //Destino
+            $destino = $transacao->getContaDestino();
+            $contaDestinoDto = new ContaDto();
+            $contaDestinoDto->setId($destino->getUsuario()->getId());
+            $contaDestinoDto->setNome($destino->getUsuario()->getNome());
+            $contaDestinoDto->setCpf($destino->getUsuario()->getCpf());
+            $contaDestinoDto->setNumeroConta($destino->getNumero());
+
+            $transacaoDto->setDestino($contaDestinoDto);
+
+
+            array_push($saida, $transacaoDto);
+        }
+
+        return $this->json($saida);
     }
 }
