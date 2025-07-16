@@ -29,6 +29,28 @@ class ContaRepository extends ServiceEntityRepository
                 ->getOneOrNullResult()
             ;
         }
+        /**
+        * @return Conta[]
+        *
+        */
+        public function findByFiltro(string $valor) {
+
+            $q = $this->createQueryBuilder('c');
+
+            return $q
+            
+            ->join('c.usuario', 'u')
+            ->where($q->expr()->like('u.nome', ':valor'))
+            ->orWhere($q->expr()->like('u.email', ':valor'))
+            ->orWhere($q->expr()->like('u.cpf', ':valor'))
+            ->orWhere($q->expr()->like('u.telefone', ':valor'))
+            ->orWhere($q->expr()->like('c.numero', ':valor'))
+            ->setParameter('valor', "%$valor%")
+            ->getQuery()
+            ->getResult()
+            
+            ;
+        }
 
     //    public function findOneBySomeField($value): ?Conta
     //    {
