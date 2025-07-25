@@ -4,26 +4,39 @@ security:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
-        users_in_memory: { memory: null }
+        app_user_provider:
+            entity:
+                class: App\Entity\Usuario
+                property: cpf
+
     firewalls:
-        dev:
-            pattern: ^/(_(profiler|wdt)|css|images|js)/
+    #/api/usuario
+        login: 
+            pattern: ^/api/auth/login
+            stateless: true 
+            provider: app_user_provider
+            json_login:
+                check_path: /api/auth/login
+                username_path: cpf
+                password_path: senha
+                success_handler: lexik_jwt_authentication.handler.authentication_success 
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+        usuario_cadastrar:
+            pattern: ^/api/usuarios
+            methods: [POST]
             security: false
-        main:
-            lazy: true
-            provider: users_in_memory
 
-            # activate different ways to authenticate
-            # https://symfony.com/doc/current/security.html#the-firewall
+        api: 
+            pattern: ^/
+            stateless: true
+            jwt: ~
+            provider: app_user_provider
 
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
 
-    # Easy way to control access for large sections of your site
-    # Note: Only the *first* access control that matches will be used
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
+        - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:
